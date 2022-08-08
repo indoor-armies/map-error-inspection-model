@@ -1,7 +1,9 @@
-import cv2
-import numpy as np
-img = cv2.imread("lane.png")
+from utils import list_images,crop_image
+from tqdm import tqdm
 
-top_row = img[100:500, 0:220]
-cv2.imshow("top_row", top_row)
-cv2.waitKey(0)
+image_list = list_images('mini_dataset/test_image')
+
+for image in tqdm(image_list):
+    image_location = image['file_path']
+    output_location = "cropped_images/" + image['file_name']
+    crop_image(image_location, output_location)
