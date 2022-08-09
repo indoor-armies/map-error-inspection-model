@@ -4,7 +4,7 @@
 
 | Assigned Code |        Class        |                   Description                    |                 Image                 |
 | :-----------: | :-----------------: | :----------------------------------------------: | :-----------------------------------: |
-|       0       |      No error       |        There are no errors in the images         | ![error_0](/error_types/0.png =50x90) |
+|       0       |      No error       |        There are no errors in the images         | ![error_0](/error_types/0.png | width=50) |
 |       1       |  Center line error  | The road center line extends out of the juction. | ![error_1](/error_types/1.png =50x90) |
 |       2       |   Stop line error   |     The stop line is in the middle of a road     | ![error_2](/error_types/2.png =50x90) |
 |       3       | Guiding route error | The navigation route does not match actual road  | ![error_3](/error_types/3.png =50x90) |
