@@ -19,3 +19,6 @@ def list_images(directory):
             }
             images.append(data)  
     return images
+
+def convert_image_to_black_and_white(image):
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
