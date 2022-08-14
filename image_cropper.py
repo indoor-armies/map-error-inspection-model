@@ -1,7 +1,8 @@
 from utils import list_images,crop_image
 from tqdm import tqdm
 
-image_list = list_images('mini_dataset/test_image')
+target_dir = 'mini_dataset/train_image/labeled_data'
+image_list = list_images(target_dir)
 
 for image in tqdm(image_list):
     image_location = image['file_path']

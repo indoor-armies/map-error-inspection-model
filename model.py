@@ -2,6 +2,8 @@ import csv
 import cv2
 import keras
 from utils import convert_image_to_black_and_white, list_images
+from pprint import pprint
+import random
 
 def get_number_of_images(directory):
     images = list_images(directory)
@@ -33,6 +35,13 @@ def parse_training_csv(csv_file_path):
     
     return images
 
+def search_image_name_in_parsed_data(image_name, parsed_data):
+    for data in parsed_data:
+        data_image_name = data["image_name"]
+        if data_image_name == image_name:
+            return data
+    return None
+
 def create_model(input_shape, num_classes):
     model = keras.models.Sequential([
         keras.layers.Flatten(input_shape=input_shape),
@@ -46,63 +55,70 @@ def create_model(input_shape, num_classes):
     )
     return model
 
-def training_image_batch_generator(image_dir, batch_size):
-    image_datas = list_images(image_dir)
-    number_of_batches = len(image_datas) // batch_size
+def training_batch_generator(training_image_dir, training_label_csv, max_batch_size):
+    parsed_csv = parse_training_csv(training_label_csv)
+    dir_image_datas = list_images(training_image_dir)
 
-    for _ in range(number_of_batches):
-        batch_images = []
+    pre_baked_data = []
+    for dir_image_data in dir_image_datas:
+        image_name = dir_image_data["file_name"]
+        image_path = dir_image_data["file_path"]
+        image_size = dir_image_data["file_size"]
+        label_data = search_image_name_in_parsed_data(image_name, parsed_csv)
+
+        data = {
+            "image_path": image_path,
+            "image_size": image_size, # Byte
+            "errors": label_data["errors"],
+            "one_hot_encoding": label_data["one_hot_encoding"]
+        }
+
+        pre_baked_data.append(data)
+
+    max_batch_size_in_byte = max_batch_size * 1080 * 1080
+    total_collected_batch_size = 0
+
+    while True:
+
+        baked_batch = []
+    
+        if len(pre_baked_data) == 0:
+            break
+
+        while True:
+            if total_collected_batch_size >= max_batch_size_in_byte:
+                break
+
+            if len(pre_baked_data) == 0:
+                break
+
+            random_pre_baked_data_index = random.randint(0, len(pre_baked_data))
+            random_pre_baked_data = pre_baked_data[random_pre_baked_data_index]
+            
+            random_image_data = cv2.imread(image_path)
+            random_pre_baked_data["image_data"] = random_image_data
+            
+            baked_batch.append(random_pre_baked_data)
+
+            random_image_size = random_pre_baked_data["image_size"]
+            total_collected_batch_size += random_image_size
+
+            print(total_collected_batch_size, max_batch_size_in_byte)
+
+            del pre_baked_data[random_pre_baked_data_index]
         
-        for _ in range(batch_size):
-            image_data = image_datas.pop()
-            image_path = image_data['file_path']
-            image = cv2.imread(image_path)
-            image = convert_image_to_black_and_white(image).tolist()
-            batch_images.append(image)
-        
-        yield batch_images
+        yield baked_batch
 
-def training_label_batch_generator(csv_file_path, batch_size):
-    parsed_training_csv_file = parse_training_csv(csv_file_path)
-    number_of_batches = len(parsed_training_csv_file) // batch_size
-
-    for _ in range(number_of_batches):
-        batch_labels = []
-        
-        for _ in range(batch_size):
-            label = parsed_training_csv_file.pop()
-            one_hot_encoding = label['one_hot_encoding']
-            batch_labels.append(one_hot_encoding)
-        
-        yield batch_labels
+    yield None
 
 
-# image = cv2.imread("mini_dataset/train_image/labeled_data/train_00037.png")
-# gray = convert_image_to_black_and_white(image).tolist()
 
-# train_images = [ gray ]
-# train_labels = [ [1, 0, 0, 0, 0, 0, 0] ]
+training_image_dir_path = "cropped_images"
+training_label_csv_path = "mini_dataset/train_label/train_label.csv"
 
-training_images_path = "mini_dataset/train_image/labeled_data"
-training_labels_csv_path = "mini_dataset/train_label/train_label.csv"
-batch_size = 10
-number_of_batches = get_number_of_images(training_images_path) // batch_size
-
-training_image_batch = training_image_batch_generator(training_images_path, batch_size)
-training_label_batch = training_label_batch_generator(training_labels_csv_path, batch_size)
-
-image_width = 1080
-image_height = 2400
-
-input_shape = (image_height, image_width, 1)
-num_classes = 7
-
-print("[*] Loading first batch of images...")
-train_images = next(training_image_batch)
-train_labels = next(training_label_batch)
-
-print("[*] Creating model...")
-model = create_model(input_shape, num_classes)
-
-print("[*] Training model...")
-model.fit(train_images, train_labels, epochs=10) 
+result = training_batch_generator(
+    training_image_dir = training_image_dir_path,
+    training_label_csv = training_label_csv_path,
+    max_batch_size = 5 # MB
+)
+print(len(next(result)))
