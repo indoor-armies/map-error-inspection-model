@@ -3,6 +3,7 @@ import cv2
 import keras
 from utils import convert_image_to_black_and_white, list_images
 from pprint import pprint
+from tqdm import tqdm
 import random
 
 def get_number_of_images(directory):
@@ -79,11 +80,14 @@ def training_batch_generator(training_image_dir, training_label_csv, max_batch_s
     total_collected_batch_size = 0
 
     while True:
+        print("[*] Loading a new batch")
 
         baked_batch = []
     
         if len(pre_baked_data) == 0:
             break
+
+        progress_bar = tqdm(total=max_batch_size_in_byte)
 
         while True:
             if total_collected_batch_size >= max_batch_size_in_byte:
@@ -92,33 +96,55 @@ def training_batch_generator(training_image_dir, training_label_csv, max_batch_s
             if len(pre_baked_data) == 0:
                 break
 
-            random_pre_baked_data_index = random.randint(0, len(pre_baked_data))
+            random_pre_baked_data_index = random.randint(0, len(pre_baked_data) - 1)
             random_pre_baked_data = pre_baked_data[random_pre_baked_data_index]
             
             random_image_data = cv2.imread(image_path)
-            random_pre_baked_data["image_data"] = random_image_data
+            random_image_data_gray = convert_image_to_black_and_white(random_image_data)
+            random_pre_baked_data["image_data"] = random_image_data_gray.tolist()
             
             baked_batch.append(random_pre_baked_data)
 
             random_image_size = random_pre_baked_data["image_size"]
             total_collected_batch_size += random_image_size
 
-            print(total_collected_batch_size, max_batch_size_in_byte)
-
             del pre_baked_data[random_pre_baked_data_index]
-        
+            progress_bar.update(random_image_size)
+
+        total_collected_batch_size = 0
         yield baked_batch
 
     yield None
 
 
-
 training_image_dir_path = "cropped_images"
 training_label_csv_path = "mini_dataset/train_label/train_label.csv"
 
-result = training_batch_generator(
+training_batch = training_batch_generator(
     training_image_dir = training_image_dir_path,
     training_label_csv = training_label_csv_path,
     max_batch_size = 5 # MB
 )
-print(len(next(result)))
+
+IMAGE_WIDTH = 220
+IMAGE_HEIGHT = 400
+NUM_OF_CLASSES = 10
+EPOCHS = 10
+
+model = create_model(
+    input_shape = (IMAGE_HEIGHT, IMAGE_WIDTH),
+    num_classes = NUM_OF_CLASSES
+)
+
+while True:
+    batch = next(training_batch)
+
+    if batch is None:
+        break
+
+    print("\n[*] Separating Image Data and One Hot Encoding")
+    training_images = [ image_data["image_data"] for image_data in batch ]
+    training_labels = [ image_data["one_hot_encoding"] for image_data in batch ]
+
+    print("[*] Fitting Data")
+    model.fit(training_images, training_labels, epochs=EPOCHS, validation_split=0.2)
