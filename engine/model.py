@@ -4,7 +4,11 @@ import keras
 from utils import convert_image_to_black_and_white, list_images
 from pprint import pprint
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 import random
+import numpy as np
+import wandb
+from wandb.keras import WandbCallback
 
 def get_number_of_images(directory):
     images = list_images(directory)
@@ -117,6 +121,11 @@ def training_batch_generator(training_image_dir, training_label_csv, max_batch_s
     yield None
 
 
+wandb.init(
+    project = "quality-inspection-model",
+    config = {"hyper": "parameter"}    
+)
+
 training_image_dir_path = "cropped_images"
 training_label_csv_path = "mini_dataset/train_label/train_label.csv"
 
@@ -146,5 +155,7 @@ while True:
     training_images = [ image_data["image_data"] for image_data in batch ]
     training_labels = [ image_data["one_hot_encoding"] for image_data in batch ]
 
-    print("[*] Fitting Data")
-    model.fit(training_images, training_labels, epochs=EPOCHS, validation_split=0.2)
+    training_images = np.array(training_images)
+    training_labels = np.array(training_labels)
+
+    model.fit(training_images, training_labels, epochs=EPOCHS, validation_split=0.2, callbacks=[WandbCallback()])
