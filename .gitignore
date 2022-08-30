@@ -2,3 +2,5 @@ dataset
 mini_dataset
 __pycache__
 cropped_images
+google-client-secret.json
+token_drive_v3.pickle
